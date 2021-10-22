@@ -4,11 +4,6 @@ from itertools  import product,combinations
 class PC():
     def __init__(self,file_bn_csv:str) -> None:
         self.learner=gum.BNLearner(file_bn_csv)
-        self.namesToID=dict()
-        self.IDtoName=dict()
-        for name in self.learner.names():
-            self.namesToID[name]=self.learner.idFromName(name)
-            self.IDtoName[self.learner.idFromName(name)]=name
         self.G,self.sepSet,self.G_directed=self.initialisation()
         
         
@@ -24,8 +19,8 @@ class PC():
         """        
         G=gum.UndiGraph()
         G_directed=gum.DAG()
-        G.addNodes(len(self.namesToID))
-        G_directed.addNodes(len(self.namesToID))
+        G.addNodes(len(self.learner.names()))
+        G_directed.addNodes(len(self.learner.names()))
         sepSet=dict()
         for node1,node2 in list(product(G.nodes(),G.nodes())): #produit cartésien de G.nodes
             if(not G.existsEdge(node2,node1) and node1!=node2):
