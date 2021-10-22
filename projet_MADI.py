@@ -2,16 +2,19 @@ import pyAgrum as gum
 from itertools  import product,combinations
 
 class PC():
-    def __init__(self,n : int) -> None:
-        self.G,self.sepSet,self.G_directed=self.initialisation(n)
-        #self.learner=gum.BNLearner("out/sample_score.csv")
+    def __init__(self,file_bn_csv:str) -> None:
+        self.learner=gum.BNLearner(file_bn_csv)
+        self.namesToID=dict()
+        self.IDtoName=dict()
+        for name in self.learner.names():
+            self.namesToID[name]=self.learner.idFromName(name)
+            self.IDtoName[self.learner.idFromName(name)]=name
+        self.G,self.sepSet,self.G_directed=self.initialisation()
         
-    def initialisation(self,n:int):
+        
+        
+    def initialisation(self):
         """ Initialise l'algorithme PC : 
-        Parameters
-        ----------
-        n : int
-            nombre de noeuds dans le BN
 
         Returns
         -------
@@ -20,17 +23,18 @@ class PC():
             sepSet : un dictionnaire d'ensemble séparant vides pour toutes paires de noeuds
         """        
         G=gum.UndiGraph()
-        G_directed=gum.DiGraph()
-        G.addNodes(n)
-        G_directed.addNodes(n)
+        G_directed=gum.DAG()
+        G.addNodes(len(self.namesToID))
+        G_directed.addNodes(len(self.namesToID))
         sepSet=dict()
         for node1,node2 in list(product(G.nodes(),G.nodes())): #produit cartésien de G.nodes
             if(not G.existsEdge(node2,node1) and node1!=node2):
                 G.addEdge(node1,node2)
                 sepSet[(node1,node2)]=[]
+                sepSet[(node2,node1)]=sepSet[(node1,node2)]
         return G,sepSet,G_directed
     
-    def testIndepChi2(self, var1, var2, kno=[], nivRisque=0.05):
+    def testIndepChi2(self, var1, var2, kno=[], nivRisque=0.05,verbose=False):
         """ Effectue un test chi2 d'indépendance entre var1 et var2 conditionnellement à l'ensemble kno
         Parameters
         ----------
@@ -48,18 +52,22 @@ class PC():
         bool
             Vrai si il y a indépendance et faux sinon
         """
-        stat,pvalue=self.learner.chi2(var1,var2,kno)
-        
-        if len(kno)==0:
-            print("Le test Chi2 indique que '{}' indépendant de '{}' ==> {}".format(var1,var2,pvalue>=nivRisque))
-        else:
-            print("Le test Chi2 indique que '{}' indépendant de '{}' étant donné {} ==> {}".format(var1,var2,kno,pvalue>=nivRisque))
+        nameVar1=self.learner.nameFromId(var1)
+        nameVar2=self.learner.nameFromId(var2)
+        names_kno=[self.learner.nameFromId(var) for var in kno]
+        stat,pvalue=self.learner.chi2(nameVar1,self.learner.nameFromId(var2),names_kno)
+        0
+        if(verbose):
+            if len(kno)==0:
+                print("Le test Chi2 indique que '{}' indépendant de '{}' ==> {}".format(nameVar1,nameVar2,pvalue>=nivRisque))
+            else:
+                print("Le test Chi2 indique que '{}' indépendant de '{}' étant donné {} ==> {}".format(nameVar1,nameVar2,names_kno,pvalue>=nivRisque))
             
         if pvalue>=nivRisque:
             return True
         return False
     
-    def testIndepG2(self, var1, var2, kno=[], nivRisque=0.05):
+    def testIndepG2(self, var1, var2, kno=[], nivRisque=0.05,verbose=False):
         """ Effectue un test G2 d'indépendance entre var1 et var2 conditionnellement à l'ensemble kno
         Parameters
         ----------
@@ -77,13 +85,17 @@ class PC():
         bool
             Vrai si il y a indépendance et faux sinon
         """
-        stat,pvalue=self.learner.G2(var1,var2,kno)
+        nameVar1=self.learner.nameFromId(var1)
+        nameVar2=self.learner.nameFromId(var2)
+        names_kno=[self.learner.nameFromId(var) for var in kno]
+        stat,pvalue=self.learner.G2(nameVar1,nameVar2,names_kno)
         
-        if len(kno)==0:
-            print("Le test G2 indique que '{}' indépendant de '{}' ==> {}".format(var1,var2,pvalue>=nivRisque))
-        else:
-            print("Le test G2 indique que '{}' indépendant de '{}' étant donné {} ==> {}".format(var1,var2,kno,pvalue>=nivRisque))
-            
+        if(verbose):
+            if len(kno)==0:
+                print("Le test G2 indique que '{}' indépendant de '{}' ==> {}".format(nameVar1,nameVar2,pvalue>=nivRisque))
+            else:
+                print("Le test G2 indique que '{}' indépendant de '{}' étant donné {} ==> {}".format(nameVar1,nameVar2,names_kno,pvalue>=nivRisque))
+                
         if pvalue>=nivRisque:
             return True
         return False
@@ -118,7 +130,7 @@ class PC():
         """ Phase 2 de l'algorithme PC
         """ 
         # Orientation des v-structures
-        for (X,Y,Z) in self.findUnshieldedTriple(self):
+        for (X,Y,Z) in self.findUnshieldedTriple():
             if Z not in self.sepSet[(X,Y)]:
                 self.G.eraseEdge(X,Z)
                 self.G.eraseEdge(Z,Y)
@@ -129,14 +141,13 @@ class PC():
         ConditionArreteOrient = True
         while ConditionArreteOrient :
             i=0
-            for X in self.G_directed.nodes():
-                for Y in self.G_directed.nodes():
+            for (X,Y) in list(product(self.G.nodes(),self.G.nodes())):
                     hasAddedOne=False
                     if Y == X:
                         continue
                     if not self.G.existsEdge(X, Y):
-                        for Z in self.G_directed.edges():
-                            if self.G_directed.existesArc(X,Z) and self.G.existsEdge(Z, Y):
+                        for Z in self.G_directed.nodes():
+                            if self.G_directed.existsArc(X,Z) and self.G.existsEdge(Z, Y):
                                 i+=1
                                 hasAddedOne=True
                                 self.G.eraseEdge(Z,Y)
@@ -156,7 +167,7 @@ class PC():
         """ Permet de trouver les unshielded triple
         Renvoie la liste des id des triplets concernés
         """   
-        triple=[]
+        triples=[]
         for Z in self.G.nodes():
             for X in self.G.nodes():
                 if Z == X or not self.G.existsEdge(X,Z): #X-Z : X est connecté à Z
@@ -164,75 +175,26 @@ class PC():
                 for Y in self.G.nodes():
                     if Y == X or Y == Z or (not self.G.existsEdge(Y,Z)) or self.G.existsEdge(X,Y): #X-Z-Y : X est connecté à Z et Z connecté à Y
                         continue
-                    triple.append((X,Z,Y))
-        return triple
-    def findUnshieldedTripleDFS(self)->set:
-        """Fonction qui trouve les Unshielded Triple avec une recherche DFS de profondeur maximum 3 enraciné en chaque sommet.
-
-        Returns
-        -------
-        set
-            [description]
-        """
-        triples=set()
-        for node in self.G.nodes():
-            triples=triples.union(self.DFS_MaxDepth3(node))
+                    triples.append((X,Z,Y))
         l=[]
-        for triple in triples:
-            X=triple[0]
-            Z=triple[1]
-            Y=triple[2]
-            if(self.G.existsEdge(X,Y) or X==Y or X==Z or Z==Y):
-                l.append(triple)
+        for i in range(len(triples)):
+            triple1=triples[i]
+            for j in range(i+1,len(triples)):
+                triple2=triples[j]
+                #print(triple1,triple2,triple1[0] in triple2 and triple1[1] in triple2 and triple1[2] in triple2)
+                if(triple1[0] in triple2 and triple1[1] in triple2 and triple1[2] in triple2):
+                    l.append(triple2)
         for triple in l:
-            triples.remove(triple)
+            if triple in triples:
+                triples.remove(triple)
         return triples
-    def DFS_MaxDepth3(self,racine:int)->set:
-        """Construit un arbre enraciné en racine avec un DFS où l'on pourra retrouver les unshielded triple
 
-        Parameters
-        ----------
-        racine : int
-            noeud sur laquelle on va enraciner le DFS
-
-        Returns
-        -------
-        set
-            l'ensemble des unshielded triple
-        """        
-        pile=[racine]
-        isDiscovered=[]
-        tree=gum.DAG()
-        index=tree.addNode()
-        treeIndicesIndex=dict() #pour garder trace dans l'arbre de à quel noeud de G correspond un noeud de l'arbre
-        treeIndicesIndex[index]=racine
-        triples=set()
-        while len(pile)!=0:
-            v=pile.pop()
-            if v not in isDiscovered:
-                for key in treeIndicesIndex.keys():
-                    if v==treeIndicesIndex[key]:
-                        indexV=key
-                isDiscovered.append(v)
-                for (node1,node2) in self.G.edges():
-                    if node1==v:
-                        pile.append(node2)
-                        index=tree.addNode()
-                        treeIndicesIndex[index]=node2
-                        tree.addArc(indexV,index)
-                    if node2==v:
-                        pile.append(node1)
-                        index=tree.addNode()
-                        treeIndicesIndex[index]=node1
-                        tree.addArc(indexV,index)
-        for enfantRacine in tree.children(racine):
-            for enfant in tree.children(enfantRacine):
-                triples.add((treeIndicesIndex[enfant],treeIndicesIndex[enfantRacine],treeIndicesIndex[racine]))
-        return triples
     def getG(self):
         return self.G
     def getSepSet(self):
         return self.sepSet
+    def getG_directed(self):
+        return self.G_directed
 
 
 
