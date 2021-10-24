@@ -141,7 +141,7 @@ class PC():
                     self.G.eraseEdge(Y,Z)
                     self.G.addArc(X, Z)
                     self.G.addArc(Y,Z)
-                    L=self.findUnshieldedTriple() #on doit recalculer les UnshieldedTriple dès qu'on change le graphe G... sinon il se peut qu'un des triple ait des éléments en commun avec le triple pour lequel on a introduit une V-Structure et cela peut mener à la création d'un cycle
+                    L=self.findUnshieldedTriple() #on doit recalculer les UnshieldedTriple dynamiquement dès qu'on change le graphe G... sinon il se peut qu'un des triple ait des éléments en commun avec le triple pour lequel on a introduit une V-Structure et cela peut mener à la création d'un cycle
                     hasGoneIn=True
                     break
             
@@ -194,17 +194,5 @@ class PC():
             if triple in triples:
                 triples.remove(triple)
         return triples
-    def findUnshieldedTriple2(self)->tuple:
-        """ Permet de trouver les unshielded triple
-        Renvoie la liste des id des triplets concernés
-        """   
-        triples=[]
-        for Z in self.G.nodes():
-            for X in self.G.nodes():
-                if Z == X or not self.G.existsEdge(X,Z): #X-Z : X est connecté à Z
-                    continue
-                for Y in self.G.nodes():
-                    if Y == X or Y == Z or (not self.G.existsEdge(Y,Z)) or self.G.existsEdge(X,Y): #X-Z-Y : X est connecté à Z et Z connecté à Y
-                        continue
-                    return (X,Z,Y)
+
 
