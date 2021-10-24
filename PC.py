@@ -1,11 +1,17 @@
 import pyAgrum as gum
 from itertools  import product,combinations
+import random
 
 class PC():
-    def __init__(self,file_bn_csv:str) -> None:
-        self.learner=gum.BNLearner(file_bn_csv)
-        self.G,self.sepSet,self.G_directed=self.initialisation()
-        
+    def __init__(self,csvFilePath:str) -> None:
+        self.learner=gum.BNLearner(csvFilePath)
+        self.idInBN_with_IDorNameFromLearner=dict()
+        self.nameInBN_with_IDFromLeaner=dict()
+        for name in self.learner.names():
+            self.idInBN_with_IDorNameFromLearner[name]=int(name.split("_")[1])
+            self.idInBN_with_IDorNameFromLearner[self.learner.idFromName(name)]=int(name.split("_")[1])
+            self.nameInBN_with_IDFromLeaner[self.learner.idFromName(name)]=name
+        self.G,self.sepSet=self.initialisation()
         
         
     def initialisation(self):
@@ -17,17 +23,15 @@ class PC():
             G : un graphe complet non orienté et
             sepSet : un dictionnaire d'ensemble séparant vides pour toutes paires de noeuds
         """        
-        G=gum.UndiGraph()
-        G_directed=gum.DAG()
+        G=gum.MixedGraph()
         G.addNodes(len(self.learner.names()))
-        G_directed.addNodes(len(self.learner.names()))
         sepSet=dict()
         for node1,node2 in list(product(G.nodes(),G.nodes())): #produit cartésien de G.nodes
             if(not G.existsEdge(node2,node1) and node1!=node2):
                 G.addEdge(node1,node2)
                 sepSet[(node1,node2)]=[]
                 sepSet[(node2,node1)]=sepSet[(node1,node2)]
-        return G,sepSet,G_directed
+        return G,sepSet#,G_directed
     
     def testIndepChi2(self, var1, var2, kno=[], nivRisque=0.05,verbose=False):
         """ Effectue un test chi2 d'indépendance entre var1 et var2 conditionnellement à l'ensemble kno
@@ -47,10 +51,10 @@ class PC():
         bool
             Vrai si il y a indépendance et faux sinon
         """
-        nameVar1=self.learner.nameFromId(var1)
-        nameVar2=self.learner.nameFromId(var2)
-        names_kno=[self.learner.nameFromId(var) for var in kno]
-        stat,pvalue=self.learner.chi2(nameVar1,self.learner.nameFromId(var2),names_kno)
+        nameVar1=f"n_{var1}"#=nom du noeud d'ID var 1 dans le BN, pour donner des visualisations cohérentes car id dans learner ≠ id dans bn
+        nameVar2=f"n_{var2}"
+        names_kno=[f"n_{var}" for var in kno]
+        stat,pvalue=self.learner.chi2(nameVar1,nameVar2,names_kno)
         0
         if(verbose):
             if len(kno)==0:
@@ -80,9 +84,9 @@ class PC():
         bool
             Vrai si il y a indépendance et faux sinon
         """
-        nameVar1=self.learner.nameFromId(var1)
-        nameVar2=self.learner.nameFromId(var2)
-        names_kno=[self.learner.nameFromId(var) for var in kno]
+        nameVar1=f"n_{var1}"
+        nameVar2=f"n_{var2}"
+        names_kno=[f"n_{var}" for var in kno]
         stat,pvalue=self.learner.G2(nameVar1,nameVar2,names_kno)
         
         if(verbose):
@@ -109,7 +113,8 @@ class PC():
                     for Z in list(combinations(adjSansY,d)): # until tous les Z de taille d ont été testés
                         if(self.testIndepChi2(X, Y, kno=Z, nivRisque=nivRisque)): # Si X indep Y | Z #On peut utiliser Chi2 ou G2 PB TODO
                             self.G.eraseEdge(X,Y)
-                            self.sepSet[(X,Y)].append(Z)
+                            for z in Z:
+                                self.sepSet[(X,Y)].append(z)
                             break
             d+=1
             compteur=0
@@ -124,38 +129,44 @@ class PC():
     def phase2(self):
         """ Phase 2 de l'algorithme PC
         """ 
-        # Orientation des v-structures
-        for (X,Y,Z) in self.findUnshieldedTriple():
-            if Z not in self.sepSet[(X,Y)]:
-                self.G.eraseEdge(X,Z)
-                self.G.eraseEdge(Z,Y)
-                self.G_directed.addArc(X, Z)
-                self.G_directed.addArc(Z, Y)
-                
+        L=self.findUnshieldedTriple()
+        hasGoneIn=True
+        while(hasGoneIn):
+            hasGoneIn=False
+            #print("L",L)
+            for (X,Z,Y) in L:
+                #print((X,Z,Y),self.sepSet[(X,Y)])
+                if Z not in self.sepSet[(X,Y)] and not self.G.existsArc(X, Y) and not self.G.existsArc(Y,X) :
+                    self.G.eraseEdge(X,Z)
+                    self.G.eraseEdge(Y,Z)
+                    self.G.addArc(X, Z)
+                    self.G.addArc(Y,Z)
+                    L=self.findUnshieldedTriple() #on doit recalculer les UnshieldedTriple dès qu'on change le graphe G... sinon il se peut qu'un des triple ait des éléments en commun avec le triple pour lequel on a introduit une V-Structure et cela peut mener à la création d'un cycle
+                    hasGoneIn=True
+                    break
+            
+        #print("après orientation Vstruct",self.G)
+
         # Propagations
-        ConditionArreteOrient = True
-        while ConditionArreteOrient :
+        plusDarreteOrientanle = False
+        while not plusDarreteOrientanle :
             i=0
             for (X,Y) in list(product(self.G.nodes(),self.G.nodes())):
-                    hasAddedOne=False
                     if Y == X:
                         continue
-                    if not self.G.existsEdge(X, Y):
-                        for Z in self.G_directed.nodes():
-                            if self.G_directed.existsArc(X,Z) and self.G.existsEdge(Z, Y):
+                    if not self.G.existsEdge(X, Y) and not self.G.existsArc(X, Y) and not self.G.existsArc(Y,X):
+                        for Z in self.G.nodes():
+                            if self.G.existsArc(X,Z) and self.G.existsEdge(Z, Y):
                                 i+=1
-                                hasAddedOne=True
                                 self.G.eraseEdge(Z,Y)
-                                self.G_directed.addArc(Z, Y)
-                    if self.G.existsEdge(X, Y) and self.G_directed.hasDirectedPath(X,Y):  
+                                self.G.addArc(Z, Y)
+                    if self.G.existsEdge(X, Y) and self.G.hasDirectedPath(X,Y):
                         self.G.eraseEdge(X,Y)
-                        self.G_directed.addArc(X, Y)
-                        if(not hasAddedOne):
-                            i+=1
+                        self.G.addArc(X, Y)
+                        i+=1
+            #print("Iteration propagation",self.G)
             if(i==0):
-                ConditionArreteOrient=False
-        
-        #TODO PB sur ConditionArreteOrient
+                plusDarreteOrientanle=True
         
 
     def findUnshieldedTriple(self)->list:
@@ -183,26 +194,17 @@ class PC():
             if triple in triples:
                 triples.remove(triple)
         return triples
+    def findUnshieldedTriple2(self)->tuple:
+        """ Permet de trouver les unshielded triple
+        Renvoie la liste des id des triplets concernés
+        """   
+        triples=[]
+        for Z in self.G.nodes():
+            for X in self.G.nodes():
+                if Z == X or not self.G.existsEdge(X,Z): #X-Z : X est connecté à Z
+                    continue
+                for Y in self.G.nodes():
+                    if Y == X or Y == Z or (not self.G.existsEdge(Y,Z)) or self.G.existsEdge(X,Y): #X-Z-Y : X est connecté à Z et Z connecté à Y
+                        continue
+                    return (X,Z,Y)
 
-    def getG(self):
-        return self.G
-    def getSepSet(self):
-        return self.sepSet
-    def getG_directed(self):
-        return self.G_directed
-
-
-
-            
-
-                    
-
-
-if __name__== "__main__":
-    pass
-    #G.addNodes(5)
-    #G.addEdge(0,1)
-    #G.addEdge(1,2)
-    #G.addArc(3,4)
-    #print(G.neighbours(3))
-    #print(G.neighbours(1))
