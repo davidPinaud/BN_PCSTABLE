@@ -1,4 +1,5 @@
 import pyAgrum as gum
+import pyAgrum.lib.notebook as gnb
 from itertools  import product,combinations
 
 class PC():
@@ -98,14 +99,16 @@ class PC():
             return True
         return False
     
-    def phase1(self,nivRisque=0.05):
+    def phase1(self,nivRisque=0.01):
         """ Phase 1 de l'algorithme PC qui trouve les V-struct
-        """        
+        """
+        # print("Avant Phase 1")
+        # gnb.sideBySide(self.G)
         d=0
         ConditionOnAdjX=True
         while ConditionOnAdjX:
             for X,Y in self.G.edges():  # Ligne 5 :
-                adjX=self.G.neighbours(X)# foreach arête X-Y tq |Adj(X)\{Y}|≥d
+                adjX=self.G.adjacents(X)# foreach arête X-Y tq |Adj(X)\{Y}|≥d
                 if len(adjX)-1 >=d:     #
                     adjSansY=adjX.copy()                     # Ligne 6,7 et 12 :
                     adjSansY.remove(Y)                       # Choisir un Z in Adj(X)\{Y} tq |Z|=d
@@ -118,12 +121,14 @@ class PC():
             d+=1
             compteur=0
             for X in self.G.nodes():            # Ligne 14
-                if len(self.G.neighbours(X))<=d: #
+                if len(self.G.adjacents(X))<=d: #
                     compteur+=1                 # compter pour combien de X |Adj(X)|≤d
                 else:
-                    break # Si un noeud a plus de d noeuds neighbours, on n'a pas besoin de regarder les autres
+                    break # Si un noeud a plus de d noeuds adjacents, on n'a pas besoin de regarder les autres
             if(len(self.G.nodes())==compteur):  # Si tous les noeuds vérifie on arrête
                 ConditionOnAdjX=False           #
+        # print("Après Phase 1")
+        # gnb.sideBySide(self.G)
 
     def phase2(self):
         """ Phase 2 de l'algorithme PC, elle permet d'orienter des arêtes pour ne pas avoir plus de V-Struct et de cycles
@@ -133,9 +138,7 @@ class PC():
         hasGoneIn=True
         while(hasGoneIn):
             hasGoneIn=False
-            #print("L",L)
             for (X,Z,Y) in L:
-                #print((X,Z,Y),self.sepSet[(X,Y)])
                 if Z not in self.sepSet[(X,Y)] and not self.G.existsArc(X, Y) and not self.G.existsArc(Y,X) :
                     self.G.eraseEdge(X,Z)
                     self.G.eraseEdge(Y,Z)
@@ -144,9 +147,8 @@ class PC():
                     L=self.findUnshieldedTriple() #on doit recalculer les UnshieldedTriple dynamiquement dès qu'on change le graphe G... sinon il se peut qu'un des triple ait des éléments en commun avec le triple pour lequel on a introduit une V-Structure et cela peut mener à la création d'un cycle
                     hasGoneIn=True
                     break
-            
-        #print("après orientation Vstruct",self.G)
-
+        # print("Après Phase 2.1")
+        # gnb.sideBySide(self.G)
         # Propagations
         plusDarreteOrientanle = False
         while not plusDarreteOrientanle :
@@ -164,10 +166,10 @@ class PC():
                         self.G.eraseEdge(X,Y)
                         self.G.addArc(X, Y)
                         i+=1
-            #print("Iteration propagation",self.G)
             if(i==0):
                 plusDarreteOrientanle=True
-        
+        # print("Après Phase 2.2")
+        # gnb.sideBySide(self.G)
 
     def findUnshieldedTriple(self)->list:
         """ Permet de trouver les unshielded triple
