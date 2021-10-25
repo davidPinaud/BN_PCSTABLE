@@ -1,6 +1,5 @@
 import pyAgrum as gum
 from itertools  import product,combinations
-import random
 
 class PC():
     def __init__(self,csvFilePath:str) -> None:
@@ -100,7 +99,7 @@ class PC():
         return False
     
     def phase1(self,nivRisque=0.05):
-        """ Phase 1 de l'algorithme PC
+        """ Phase 1 de l'algorithme PC qui trouve les V-struct
         """        
         d=0
         ConditionOnAdjX=True
@@ -127,7 +126,8 @@ class PC():
                 ConditionOnAdjX=False           #
 
     def phase2(self):
-        """ Phase 2 de l'algorithme PC
+        """ Phase 2 de l'algorithme PC, elle permet d'orienter des arêtes pour ne pas avoir plus de V-Struct et de cycles
+        Après cette phase, G est un graphe essentiel 
         """ 
         L=self.findUnshieldedTriple()
         hasGoneIn=True
