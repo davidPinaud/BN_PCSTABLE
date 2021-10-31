@@ -5,13 +5,17 @@ from itertools  import product,combinations
 class PC():
     def __init__(self,csvFilePath:str) -> None:
         self.learner=gum.BNLearner(csvFilePath)
+
         self.idInBN_with_IDorNameFromLearner=dict()
         self.nameInBN_with_IDFromLeaner=dict()
         for name in self.learner.names():
             self.idInBN_with_IDorNameFromLearner[name]=int(name.split("_")[1])
             self.idInBN_with_IDorNameFromLearner[self.learner.idFromName(name)]=int(name.split("_")[1])
             self.nameInBN_with_IDFromLeaner[self.learner.idFromName(name)]=name
+
         self.G,self.sepSet=self.initialisation()
+        self.verbose=""
+        self.GPhase21=None
         
         
     def initialisation(self):
@@ -29,7 +33,7 @@ class PC():
         for node1,node2 in list(product(G.nodes(),G.nodes())): #produit cartésien de G.nodes
             if(not G.existsEdge(node2,node1) and node1!=node2):
                 G.addEdge(node1,node2)
-                sepSet[(node1,node2)]=[]
+                sepSet[(node1,node2)]=set()
                 sepSet[(node2,node1)]=sepSet[(node1,node2)]
         return G,sepSet#,G_directed
     
@@ -58,9 +62,11 @@ class PC():
         0
         if(verbose):
             if len(kno)==0:
-                print("Le test Chi2 indique que '{}' indépendant de '{}' ==> {}".format(nameVar1,nameVar2,pvalue>=nivRisque))
+              #print("Le test Chi2 indique que '{}' indépendant de '{}' ==> {}".format(nameVar1,nameVar2,pvalue>=nivRisque))
+              pass
             else:
-                print("Le test Chi2 indique que '{}' indépendant de '{}' étant donné {} ==> {}".format(nameVar1,nameVar2,names_kno,pvalue>=nivRisque))
+              #print("Le test Chi2 indique que '{}' indépendant de '{}' étant donné {} ==> {}".format(nameVar1,nameVar2,names_kno,pvalue>=nivRisque))
+              pass
             
         if pvalue>=nivRisque:
             return True
@@ -91,19 +97,21 @@ class PC():
         
         if(verbose):
             if len(kno)==0:
-                print("Le test G2 indique que '{}' indépendant de '{}' ==> {}".format(nameVar1,nameVar2,pvalue>=nivRisque))
+              #print("Le test G2 indique que '{}' indépendant de '{}' ==> {}".format(nameVar1,nameVar2,pvalue>=nivRisque))
+              pass
             else:
-                print("Le test G2 indique que '{}' indépendant de '{}' étant donné {} ==> {}".format(nameVar1,nameVar2,names_kno,pvalue>=nivRisque))
+              #print("Le test G2 indique que '{}' indépendant de '{}' étant donné {} ==> {}".format(nameVar1,nameVar2,names_kno,pvalue>=nivRisque))
+              pass
                 
         if pvalue>=nivRisque:
             return True
         return False
     
-    def phase1(self,nivRisque=0.01):
+    def phase1(self,nivRisque=0.05):
         """ Phase 1 de l'algorithme PC qui trouve les V-struct
         """
-        # print("Avant Phase 1")
-        # gnb.sideBySide(self.G)
+        ##print("Avant Phase 1")
+        # #gnb.sideBySide(self.G)
         d=0
         ConditionOnAdjX=True
         while ConditionOnAdjX:
@@ -113,10 +121,11 @@ class PC():
                     adjSansY=adjX.copy()                     # Ligne 6,7 et 12 :
                     adjSansY.remove(Y)                       # Choisir un Z in Adj(X)\{Y} tq |Z|=d
                     for Z in list(combinations(adjSansY,d)): # until tous les Z de taille d ont été testés
-                        if(self.testIndepChi2(X, Y, kno=Z, nivRisque=nivRisque)): # Si X indep Y | Z #On peut utiliser Chi2 ou G2 PB TODO
+                        if(self.testIndepG2(X, Y, kno=Z, nivRisque=nivRisque)): # Si X indep Y | Z #On peut utiliser Chi2 ou G2 PB TODO
                             self.G.eraseEdge(X,Y)
                             for z in Z:
-                                self.sepSet[(X,Y)].append(z)
+                                self.sepSet[(X,Y)].add(z)
+                                self.sepSet[(Y,X)].add(z)
                             break
             d+=1
             compteur=0
@@ -127,8 +136,8 @@ class PC():
                     break # Si un noeud a plus de d noeuds adjacents, on n'a pas besoin de regarder les autres
             if(len(self.G.nodes())==compteur):  # Si tous les noeuds vérifie on arrête
                 ConditionOnAdjX=False           #
-        # print("Après Phase 1")
-        # gnb.sideBySide(self.G)
+        ##print("Après Phase 1")
+        # #gnb.sideBySide(self.G)
 
     def phase2(self):
         """ Phase 2 de l'algorithme PC, elle permet d'orienter des arêtes pour ne pas avoir plus de V-Struct et de cycles
@@ -136,65 +145,216 @@ class PC():
         """ 
         L=self.findUnshieldedTriple()
         hasGoneIn=True
-        while(hasGoneIn):
+        while(hasGoneIn):#Step 2
             hasGoneIn=False
+           ##print(f"Unshielded Triples {L}")
             for (X,Z,Y) in L:
-                if Z not in self.sepSet[(X,Y)] and not self.G.existsArc(X, Y) and not self.G.existsArc(Y,X) :
+               ##print(f"X,Z,Y : {X,Z,Y} self.sepSet[(X,Y)]={self.sepSet[(X,Y)]}")
+                if Z not in self.sepSet[(X,Y)]:
                     self.G.eraseEdge(X,Z)
                     self.G.eraseEdge(Y,Z)
-                    self.G.addArc(X, Z)
+                    self.G.addArc(X,Z)
                     self.G.addArc(Y,Z)
                     L=self.findUnshieldedTriple() #on doit recalculer les UnshieldedTriple dynamiquement dès qu'on change le graphe G... sinon il se peut qu'un des triple ait des éléments en commun avec le triple pour lequel on a introduit une V-Structure et cela peut mener à la création d'un cycle
-                    hasGoneIn=True
+                    hasGoneIn=True #Pour ne pas avoir une boucle infinie quand on ne peut pas orienter des arcs
                     break
-        # print("Après Phase 2.1")
-        # gnb.sideBySide(self.G)
+        #print("Après Phase 2.1")
+        #gnb.sideBySide(self.G)
         # Propagations
-        plusDarreteOrientanle = False
-        while not plusDarreteOrientanle :
-            i=0
+        self.GPhase21=gum.MixedGraph(self.G)
+        plusDarreteOrientable = False
+        nb_iteration=1
+        self.verbose+="\n"+"Phase 2"
+        while not plusDarreteOrientable : #Step3
+            #print(f"Itération n°{nb_iteration}")
+            self.verbose+="\n"+f"Itération n°{nb_iteration}"
+            nb_iteration+=1
+            plusDarreteOrientable=True
+            tripletsTemp=list(product(self.G.nodes(),self.G.nodes(),self.G.nodes()))
+            toDelete=[]
+            for (i,j,k) in tripletsTemp: #Enlever les triplets avec les mêmes composantes
+                if(i==j or i==k or j==k):
+                    toDelete.append((i,j,k))
+            for triple in toDelete:
+                if triple in tripletsTemp:
+                    tripletsTemp.remove(triple)
+            toDelete=[]
+            
+            #R2 (R3 dans pseudo code prof)
             for (X,Y) in list(product(self.G.nodes(),self.G.nodes())):
-                    if Y == X:
-                        continue
-                    if not self.G.existsEdge(X, Y) and not self.G.existsArc(X, Y) and not self.G.existsArc(Y,X):
-                        for Z in self.G.nodes():
-                            if self.G.existsArc(X,Z) and self.G.existsEdge(Z, Y):
-                                i+=1
-                                self.G.eraseEdge(Z,Y)
-                                self.G.addArc(Z, Y)
-                    if self.G.existsEdge(X, Y) and self.G.hasDirectedPath(X,Y):
-                        self.G.eraseEdge(X,Y)
-                        self.G.addArc(X, Y)
-                        i+=1
-            if(i==0):
-                plusDarreteOrientanle=True
-        # print("Après Phase 2.2")
-        # gnb.sideBySide(self.G)
+                self.verbose+="\n"+f"in R2 : (X,Y)={(X,Y)}"
+                if self.G.existsEdge(X,Y) and self.G.hasDirectedPath(X,Y):
+                    self.verbose+="\n"+f"in R2 : (X,Y)={(X,Y)}, on oriente {X}->{Y}"
+                    self.G.eraseEdge(X,Y)
+                    self.G.addArc(X, Y)
+            # for (i,j,k) in tripletsTemp:
+            #     self.verbose+="\n"+f"in R2 : (i,j,k)={(i,j,k)}"
+            #     #print(f"in R2 : (i,j,k)={(i,j,k)}")
+            #     if(self.G.existsEdge(i,j) and self.G.existsArc(i,k) and self.G.existsArc(k,j)):
+            #         self.verbose+="\n"+f"in R2 : (i,j,k)={(i,j,k)}, on oriente {i}->{j}"
+            #         #print(f"in R2 : (i,j,k)={(i,j,k)}, on oriente {i}->{j}")
+            #         self.G.eraseEdge(i,j)
+            #         self.G.addArc(i, j)
+            #         plusDarreteOrientable=False
+            #         break
 
+            quadrupletsTemp=list(product(self.G.nodes(),self.G.nodes(),self.G.nodes(),self.G.nodes()))
+            toDelete=[]
+            for (i,j,k,l) in quadrupletsTemp:#Enlever les quadruplets avec les mêmes composantes
+                if(i==j or i==k or i==l or j==k or j==l or k==l):
+                    toDelete.append((i,j,k,l))
+            for quadruple in toDelete:
+                if quadruple in tripletsTemp:
+                    quadrupletsTemp.remove(quadruple)
+            toDelete=[]
+            #R3
+            for (i,j,k,l) in quadrupletsTemp:
+                #print(f"in R3 : (i,j,k,l)={(i,j,k,l)}")
+                if(self.G.existsEdge(i,j) and self.G.existsEdge(i,k) and self.G.existsArc(k,j) and self.G.existsArc(l,j) and self.G.existsEdge(i,l) and not self.G.existsEdge(k,l)):
+                    #print(f"in R3 : (i,j,k,l)={(i,j,k,l)}, on oriente {i}->{j}")
+                    self.G.eraseEdge(i,j)
+                    self.G.addArc(i,j)
+                    plusDarreteOrientable=False
+                    break
+            #R1
+            for (i,j,k) in tripletsTemp:
+                self.verbose+="\n"+f"in R1 : (i,j,k)={(i,j,k)}"
+                #print(f"in R1 : (i,j,k)={(i,j,k)}")
+                if(self.G.existsArc(i,j) and self.G.existsEdge(j,k) and not self.G.existsEdge(i,k)):
+                    self.verbose+="\n"+f"in R1 : (i,j,k)={(i,j,k)}, on oriente {j}->{k}"
+                    #print(f"in R1 : (i,j,k)={(i,j,k)}, on oriente {j}->{k}")
+                    self.G.eraseEdge(j,k)
+                    self.G.addArc(j, k)
+                    plusDarreteOrientable=False
+                    break
+        #    ##print(f'Itération n°{nb_iteration}')
+        #     nb_iteration+=1
+        #     i=0
+        #     for (X,Y) in list(product(self.G.nodes(),self.G.nodes())):
+        #        ##print(f"(X,Y) = ({X,Y})")
+        #         if Y == X:
+        #             continue
+
+        #         if not self.G.existsEdge(X, Y) and not self.G.existsArc(X, Y) and not self.G.existsArc(Y,X):
+        #             for Z in self.G.nodes():
+        #                 if self.G.existsArc(X,Z) and self.G.existsEdge(Z, Y):
+        #                    ##print(f"(X,Y) = ({X,Y}) in cond1 with Z={Z}, on rajoute l'arc ({Z,Y})")
+        #                     i+=1
+        #                     self.G.eraseEdge(Z,Y)
+        #                     self.G.addArc(Z, Y)
+
+        #         if self.G.existsEdge(X,Y) and self.G.hasDirectedPath(X,Y):
+        #            ##print(f"(X,Y) = ({X,Y}) in cond2, on rajoute l'arc ({X,Y})")
+        #             self.G.eraseEdge(X,Y)
+        #             self.G.addArc(X, Y)
+        #             i+=1
+        #        ##print(f"(X,Y) = ({X,Y})")
+            # if(i==0):
+            #     plusDarreteOrientable=True
+        #print("Après Phase 2.2")
+        #gnb.sideBySide(self.G)
     def findUnshieldedTriple(self)->list:
         """ Permet de trouver les unshielded triple
         Renvoie la liste des id des triplets concernés
-        """   
+        """
         triples=[]
         for Z in self.G.nodes():
             for X in self.G.nodes():
                 if Z == X or not self.G.existsEdge(X,Z): #X-Z : X est connecté à Z
                     continue
                 for Y in self.G.nodes():
-                    if Y == X or Y == Z or (not self.G.existsEdge(Y,Z)) or self.G.existsEdge(X,Y): #X-Z-Y : X est connecté à Z et Z connecté à Y
+                    if Y == X or Y == Z or (not self.G.existsEdge(Y,Z)) or self.G.existsEdge(X,Y) or self.G.existsArc(X, Y) or self.G.existsArc(Y,X): #X-Z-Y : X est connecté à Z et Z connecté à Y
                         continue
                     triples.append((X,Z,Y))
-        l=[]
+        l=[]#Enlever les doublons
         for i in range(len(triples)):
             triple1=triples[i]
             for j in range(i+1,len(triples)):
                 triple2=triples[j]
-                #print(triple1,triple2,triple1[0] in triple2 and triple1[1] in triple2 and triple1[2] in triple2)
+                ##print(triple1,triple2,triple1[0] in triple2 and triple1[1] in triple2 and triple1[2] in triple2)
                 if(triple1[0] in triple2 and triple1[1] in triple2 and triple1[2] in triple2):
                     l.append(triple2)
         for triple in l:
             if triple in triples:
                 triples.remove(triple)
         return triples
+    def phase1_STABLE(self,nivRisque=0.05):
+        """ Phase 1 de l'algorithme PC-Stable qui trouve les V-struct
+        """
+        ##print("Avant Phase 1")
+        # #gnb.sideBySide(self.G)
+        d=0
+        ConditionOnAdjX=True
+        while ConditionOnAdjX:
+            a=dict()
+            for X in self.G.nodes():
+                a[X]=self.G.adjacents(X)
+            for X,Y in self.G.edges():
+                if len(a[X])-1 >=d:     
+                    aSansY=a[X].copy()                     
+                    aSansY.remove(Y)                       
+                    for Z in list(combinations(aSansY,d)): 
+                        if(self.testIndepG2(X, Y, kno=Z, nivRisque=nivRisque)): 
+                            self.G.eraseEdge(X,Y)
+                            for z in Z:
+                                self.sepSet[(X,Y)].add(z)
+                                self.sepSet[(Y,X)].add(z)
+                            break
+            d+=1
+            compteur=0
+            for X in self.G.nodes():            # Ligne 14
+                if len(self.G.adjacents(X))<=d: #
+                    compteur+=1                 # compter pour combien de X |Adj(X)|≤d
+                else:
+                    break # Si un noeud a plus de d noeuds adjacents, on n'a pas besoin de regarder les autres
+            if(len(self.G.nodes())==compteur):  # Si tous les noeuds vérifie on arrête
+                ConditionOnAdjX=False 
+        ##print("Après Phase 1")
+        # #gnb.sideBySide(self.G)
+    def findConsistentSet(self,X,Y,G2):
+        consistentSet=set()
+        for Z in G2.adjacents(X):
+            if Z!=Y and not G2.existsArc(X,Z):
+                paths=G2.mixedUnorientedPath(X,Y)
+                for path in paths:
+                    if Z in path:
+                        consistentSet.add(Z)
+                        break
+        return consistentSet
+    def phase1_PC_CSS(self,nivRisque=0.05,G1=gum.MixedGraph(),G2=gum.MixedGraph()):
+        """ NewStep1(G1|G2) de PC-CSS
+        """
+        ##print("Avant Phase 1")
+        # #gnb.sideBySide(self.G)
+        d=0
+        ConditionOnAdjX=True
+        while ConditionOnAdjX:
+            a=dict()
+            for X in G1.nodes():
+                a[X]=G1.adjacents(X)
+            for X,Y in G1.edges():
+                if len(a[X])-1 >=d:     
+                    aSansY=a[X].copy()                     
+                    aSansY.remove(Y)
+                    aSansYEtConsist=set(aSansY).intersection(self.findConsistentSet(X,Y,G2))                
+                    for Z in list(combinations(aSansYEtConsist,d)): 
+                        if(self.testIndepG2(X, Y, kno=Z, nivRisque=nivRisque)): 
+                            G1.eraseEdge(X,Y)
+                            for z in Z:
+                                self.sepSet[(X,Y)].add(z)
+                                self.sepSet[(Y,X)].add(z)
+                            break
+            d+=1
+            compteur=0
+            for X in G1.nodes():            # Ligne 14
+                if len(G1.adjacents(X))<=d: #
+                    compteur+=1                 # compter pour combien de X |Adj(X)|≤d
+                else:
+                    break # Si un noeud a plus de d noeuds adjacents, on n'a pas besoin de regarder les autres
+            if(len(G1.nodes())==compteur):  # Si tous les noeuds vérifie on arrête
+                ConditionOnAdjX=False 
+        ##print("Après Phase 1")
+        # #gnb.sideBySide(self.G)
 
+            
 
