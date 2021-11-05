@@ -3,15 +3,15 @@ import pyAgrum.lib.notebook as gnb
 from itertools  import product,combinations
 
 class PC():
-    def __init__(self,csvFilePath:str) -> None:
+    def __init__(self,csvFilePath:str) -> None:        
         self.learner=gum.BNLearner(csvFilePath)
 
-        self.idInBN_with_IDorNameFromLearner=dict()
-        self.nameInBN_with_IDFromLeaner=dict()
-        for name in self.learner.names():
-            self.idInBN_with_IDorNameFromLearner[name]=int(name.split("_")[1])
-            self.idInBN_with_IDorNameFromLearner[self.learner.idFromName(name)]=int(name.split("_")[1])
-            self.nameInBN_with_IDFromLeaner[self.learner.idFromName(name)]=name
+        # self.idInBN_with_IDorNameFromLearner=dict()
+        # self.nameInBN_with_IDFromLeaner=dict()
+        # for name in self.learner.names():
+        #     self.idInBN_with_IDorNameFromLearner[name]=int(name.split("_")[1])
+        #     self.idInBN_with_IDorNameFromLearner[self.learner.idFromName(name)]=int(name.split("_")[1])
+        #     self.nameInBN_with_IDFromLeaner[self.learner.idFromName(name)]=name
 
         self.G,self.sepSet=self.initialisation()
         self.verbose=""
@@ -20,7 +20,7 @@ class PC():
         
     def initialisation(self):
         """ Initialise l'algorithme PC : 
-
+        crée un graphe non orienté complet et initialise les sepset vides
         Returns
         -------
         UndiGraph Graph et Dict
@@ -62,10 +62,10 @@ class PC():
         0
         if(verbose):
             if len(kno)==0:
-              #print("Le test Chi2 indique que '{}' indépendant de '{}' ==> {}".format(nameVar1,nameVar2,pvalue>=nivRisque))
+              print("Le test Chi2 indique que '{}' indépendant de '{}' ==> {}".format(nameVar1,nameVar2,pvalue>=nivRisque))
               pass
             else:
-              #print("Le test Chi2 indique que '{}' indépendant de '{}' étant donné {} ==> {}".format(nameVar1,nameVar2,names_kno,pvalue>=nivRisque))
+              print("Le test Chi2 indique que '{}' indépendant de '{}' étant donné {} ==> {}".format(nameVar1,nameVar2,names_kno,pvalue>=nivRisque))
               pass
             
         if pvalue>=nivRisque:
@@ -97,10 +97,10 @@ class PC():
         
         if(verbose):
             if len(kno)==0:
-              #print("Le test G2 indique que '{}' indépendant de '{}' ==> {}".format(nameVar1,nameVar2,pvalue>=nivRisque))
+              print("Le test G2 indique que '{}' indépendant de '{}' ==> {}".format(nameVar1,nameVar2,pvalue>=nivRisque))
               pass
             else:
-              #print("Le test G2 indique que '{}' indépendant de '{}' étant donné {} ==> {}".format(nameVar1,nameVar2,names_kno,pvalue>=nivRisque))
+              print("Le test G2 indique que '{}' indépendant de '{}' étant donné {} ==> {}".format(nameVar1,nameVar2,names_kno,pvalue>=nivRisque))
               pass
                 
         if pvalue>=nivRisque:
@@ -108,7 +108,7 @@ class PC():
         return False
     
     def phase1(self,nivRisque=0.05):
-        """ Phase 1 de l'algorithme PC qui trouve les V-struct
+        """ Phase 1 de l'algorithme PC
         """
         ##print("Avant Phase 1")
         # #gnb.sideBySide(self.G)
@@ -187,16 +187,6 @@ class PC():
                     self.verbose+="\n"+f"in R2 : (X,Y)={(X,Y)}, on oriente {X}->{Y}"
                     self.G.eraseEdge(X,Y)
                     self.G.addArc(X, Y)
-            # for (i,j,k) in tripletsTemp:
-            #     self.verbose+="\n"+f"in R2 : (i,j,k)={(i,j,k)}"
-            #     #print(f"in R2 : (i,j,k)={(i,j,k)}")
-            #     if(self.G.existsEdge(i,j) and self.G.existsArc(i,k) and self.G.existsArc(k,j)):
-            #         self.verbose+="\n"+f"in R2 : (i,j,k)={(i,j,k)}, on oriente {i}->{j}"
-            #         #print(f"in R2 : (i,j,k)={(i,j,k)}, on oriente {i}->{j}")
-            #         self.G.eraseEdge(i,j)
-            #         self.G.addArc(i, j)
-            #         plusDarreteOrientable=False
-            #         break
 
             quadrupletsTemp=list(product(self.G.nodes(),self.G.nodes(),self.G.nodes(),self.G.nodes()))
             toDelete=[]
@@ -227,30 +217,6 @@ class PC():
                     self.G.addArc(j, k)
                     plusDarreteOrientable=False
                     break
-        #    ##print(f'Itération n°{nb_iteration}')
-        #     nb_iteration+=1
-        #     i=0
-        #     for (X,Y) in list(product(self.G.nodes(),self.G.nodes())):
-        #        ##print(f"(X,Y) = ({X,Y})")
-        #         if Y == X:
-        #             continue
-
-        #         if not self.G.existsEdge(X, Y) and not self.G.existsArc(X, Y) and not self.G.existsArc(Y,X):
-        #             for Z in self.G.nodes():
-        #                 if self.G.existsArc(X,Z) and self.G.existsEdge(Z, Y):
-        #                    ##print(f"(X,Y) = ({X,Y}) in cond1 with Z={Z}, on rajoute l'arc ({Z,Y})")
-        #                     i+=1
-        #                     self.G.eraseEdge(Z,Y)
-        #                     self.G.addArc(Z, Y)
-
-        #         if self.G.existsEdge(X,Y) and self.G.hasDirectedPath(X,Y):
-        #            ##print(f"(X,Y) = ({X,Y}) in cond2, on rajoute l'arc ({X,Y})")
-        #             self.G.eraseEdge(X,Y)
-        #             self.G.addArc(X, Y)
-        #             i+=1
-        #        ##print(f"(X,Y) = ({X,Y})")
-            # if(i==0):
-            #     plusDarreteOrientable=True
         #print("Après Phase 2.2")
         #gnb.sideBySide(self.G)
     def findUnshieldedTriple(self)->list:
@@ -279,7 +245,7 @@ class PC():
                 triples.remove(triple)
         return triples
     def phase1_STABLE(self,nivRisque=0.05):
-        """ Phase 1 de l'algorithme PC-Stable qui trouve les V-struct
+        """ Phase 1 de l'algorithme PC-Stable 
         """
         ##print("Avant Phase 1")
         # #gnb.sideBySide(self.G)
@@ -312,17 +278,32 @@ class PC():
         ##print("Après Phase 1")
         # #gnb.sideBySide(self.G)
     def findConsistentSet(self,X,Y,G2):
+        """Fonction qui trouve le consistent set de deux noeuds X,Y dans un graphe G2
+
+        Parameters
+        ----------
+        X : int
+            id d'un noeud dans G
+        Y : int
+            id d'un noeud dans G
+        G2 : pyAgrum.MixedGraph
+            Graphe dans lequel calculer le consistent set
+
+        Returns
+        -------
+        set
+            l'ensemble consistent de x et y dans G2
+        """        
         consistentSet=set()
         for Z in G2.adjacents(X):
             if Z!=Y and not G2.existsArc(X,Z):
-                paths=G2.mixedUnorientedPath(X,Y)
-                for path in paths:
-                    if Z in path:
-                        consistentSet.add(Z)
-                        break
+                if len(G2.mixedUnorientedPath(X,Z))!=0 and len(G2.mixedUnorientedPath(Z,Y))!=0:
+                    consistentSet.add(Z)
         return consistentSet
     def phase1_PC_CSS(self,nivRisque=0.05,G1=gum.MixedGraph(),G2=gum.MixedGraph()):
         """ NewStep1(G1|G2) de PC-CSS
+        Les self.G sont remplacé par G1
+        aSansY est remplacé par set(aSansY).intersection(self.findConsistentSet(X,Y,G2))  
         """
         ##print("Avant Phase 1")
         # #gnb.sideBySide(self.G)
