@@ -110,7 +110,7 @@ class PC():
         """ 
         L=self.findUnshieldedTriple()
         hasGoneIn=True
-
+        #Phase 2.1 : Orientation des V-Struct
         while(hasGoneIn):#Step 2
             hasGoneIn=False
             for (X,Z,Y) in L:
@@ -125,27 +125,48 @@ class PC():
                     hasGoneIn=True #Pour ne pas avoir une boucle infinie quand on ne peut pas orienter des arcs
                     break
 
-        # Propagations
-        self.GPhase21=gum.MixedGraph(self.G)
-        plusDarreteOrientable = False
-        nb_iteration=1
-        self.verbose+="\n"+"Phase 2"
+        # Phase 2.2 : Propagations, les orientation que la phase 2.1 implique
+        
+        self.GPhase21=gum.MixedGraph(self.G)#Pour la verbose
+        self.verbose+="\n"+"Phase 2"        #Pour la verbose
+        nb_iteration=1                      #Pour la verbose
+        
+        plusDarreteOrientable = False #Condition d'arrêt
+        
+        
 
         while not plusDarreteOrientable : #Step3
+            #Verbose
             self.verbose+="\n"+f"Itération n°{nb_iteration}"
             nb_iteration+=1
+            #Condition d'arrêt
             plusDarreteOrientable=True
+
             tripletsTemp=list(product(self.G.nodes(),self.G.nodes(),self.G.nodes()))
             toDelete=[]
             for (i,j,k) in tripletsTemp: #Enlever les triplets avec les mêmes composantes
                 if(i==j or i==k or j==k):
                     toDelete.append((i,j,k))
             for triple in toDelete:
-                if triple in tripletsTemp:
-                    tripletsTemp.remove(triple)
+                tripletsTemp.remove(triple)
+                # if triple in tripletsTemp:
+                #     tripletsTemp.remove(triple)
+
+             #Liste de tous les quadruplets
+            quadrupletsTemp=list(product(self.G.nodes(),self.G.nodes(),self.G.nodes(),self.G.nodes()))
             toDelete=[]
+            for (i,j,k,l) in quadrupletsTemp:#Enlever les quadruplets avec les mêmes composantes
+                if(i==j or i==k or i==l or j==k or j==l or k==l):
+                    toDelete.append((i,j,k,l))
+            for quadruple in toDelete:
+                quadrupletsTemp.remove(quadruple)
+                # if quadruple in quadrupletsTemp:
+                #     quadrupletsTemp.remove(quadruple)
+            
             
             #R2 (R3 dans pseudo code prof)
+            # Ici c'est R3 dans le pseudo code du cours, le R2 du papier n'empechait que les
+            # cycles de taille 3
             for (X,Y) in list(product(self.G.nodes(),self.G.nodes())):
                 self.verbose+="\n"+f"in R2 : (X,Y)={(X,Y)}"
                 if self.G.existsEdge(X,Y) and self.G.hasDirectedPath(X,Y):
@@ -153,25 +174,14 @@ class PC():
                     self.G.eraseEdge(X,Y)
                     self.G.addArc(X, Y)
 
-            #Liste de tous les quadruplets
-            quadrupletsTemp=list(product(self.G.nodes(),self.G.nodes(),self.G.nodes(),self.G.nodes()))
-            toDelete=[]
-            for (i,j,k,l) in quadrupletsTemp:#Enlever les quadruplets avec les mêmes composantes
-                if(i==j or i==k or i==l or j==k or j==l or k==l):
-                    toDelete.append((i,j,k,l))
-            for quadruple in toDelete:
-                if quadruple in tripletsTemp:
-                    quadrupletsTemp.remove(quadruple)
-            toDelete=[]
-
-            #R3
+            #R3 : une règle pas dans le pseudo code du cours qui évite les "nouvelles" v-struct OU un cycle
             for (i,j,k,l) in quadrupletsTemp:
                 if(self.G.existsEdge(i,j) and self.G.existsEdge(i,k) and self.G.existsArc(k,j) and self.G.existsArc(l,j) and self.G.existsEdge(i,l) and not self.G.existsEdge(k,l)):
                     self.G.eraseEdge(i,j)
                     self.G.addArc(i,j)
                     plusDarreteOrientable=False
                     break
-            #R1
+            #R1 (R2 dans pseudo code prof) pour éviter la création de v-struct
             for (i,j,k) in tripletsTemp:
                 self.verbose+="\n"+f"in R1 : (i,j,k)={(i,j,k)}"
                 if(self.G.existsArc(i,j) and self.G.existsEdge(j,k) and not self.G.existsEdge(i,k)):
@@ -180,6 +190,13 @@ class PC():
                     self.G.addArc(j, k)
                     plusDarreteOrientable=False
                     break
+                
+            # Nous avons choisis de mettre R2 et R3 avant R1 pour limiter la création de cycle
+            # Pendant l'exécution de l'algorithme. La règle R3, si appliquée, en particulier construit 
+            # de "nouvelles" v-struct qui interdise l'ajout d'un nouveau cycle.
+            # 
+            # Dans les situations où nous allons appliquer R3, il est en effet préférable d'introduire 
+            # ces v-struct plutôt que de possiblement d'introduire des cycles en faisant R1 avant.
 
 ####### FONCTIONS UTILITAIRES #######
 
