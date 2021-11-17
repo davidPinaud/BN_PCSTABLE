@@ -80,7 +80,7 @@ class PC():
         while ConditionOnAdjX:
             a=dict()
             for X in self.G.nodes():
-                a[X]=self.G.adjacents(X)
+                a[X]=self.G.adjacents(X)  
             for X,Y in self.G.edges():
                 if len(a[X])-1 >=d:     
                     aSansY=a[X].copy()                     
@@ -190,7 +190,7 @@ class PC():
                     self.G.addArc(j, k)
                     plusDarreteOrientable=False
                     break
-                
+
             # Nous avons choisis de mettre R2 et R3 avant R1 pour limiter la création de cycle
             # Pendant l'exécution de l'algorithme. La règle R3, si appliquée, en particulier construit 
             # de "nouvelles" v-struct qui interdise l'ajout d'un nouveau cycle.
