@@ -6,7 +6,7 @@ Sujet du projet : Comparaison d'algorithmes d'apprentissages basés sur des cont
 But : Implémenter et comparer différentes variantes de l'algorithme PC.
 Ce projet se décline comme un rapport de recherche sur des algorithmes de l'état de l'art. L'objectif est de se donner les moyens de décider l'algorithme efficace à utiliser. 
 
-Algorithmes à comparer :
+### Algorithmes à comparer :
 PC (voir Spirtes, P.; and Glymour, C. 1991. 
 An algorithm for fast recovery of sparse causal graphs. 
 Social Science Computer Review 9: 62–72.)
@@ -20,7 +20,7 @@ Constraint-based Causal Structure Learning with Consistent Separating Sets.
 In Advances in Neural Information Processing Systems 32. Curran Associates, Inc. 
 http://papers.nips.cc/paper/9573-constraint-based-causal-structure-learning-with-consistent-separating-sets.pdf.)
 
-Quelques critères de comparaison :
+### Quelques critères de comparaison :
 En fonction de la taille de la base et/ou du nombre de variables dans le BN
 
 Qualité de l'apprentissage : Structural Hamming, F-score, dist2opt, etc.
