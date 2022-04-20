@@ -6,6 +6,8 @@ Sujet du projet : Comparaison d'algorithmes d'apprentissages basés sur des cont
 But : Implémenter et comparer différentes variantes de l'algorithme PC.
 Ce projet se décline comme un rapport de recherche sur des algorithmes de l'état de l'art. L'objectif est de se donner les moyens de décider l'algorithme efficace à utiliser. 
 
+Ce repository est constitué de plusieurs fichiers : Le dossier res recense les résultats obtenus, MADI_AideProjet.pdf est un document d'aide pour ce projet (notamment concernant la syntaxe), PC.py et presentation_resultats_et_demonstrations.ipynb sont les codes sources et presentation_resultats_et_demonstrations.ipynb fait également office de rapport, test.csv est une instance de test.
+
 ### Algorithmes à comparer :
 PC (voir Spirtes, P.; and Glymour, C. 1991. 
 An algorithm for fast recovery of sparse causal graphs. 
