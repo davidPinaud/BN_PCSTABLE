@@ -1,9 +1,9 @@
 # Projet MADI - Implémentation de PC et PC-Stable
 Projet réalisé dans le cadre de l'UE Modèles et algorithmes pour la décision dans l'incertain (MADI).
 
-Sujet du projet : Comparaison d'algorithmes d'apprentissages basés sur des contraintes
+Sujet du projet : Graphe essentiel dans les réseaux bayésiens, comparaison d'algorithmes d'apprentissages basés sur des contraintes
 
-But : Implémenter et comparer différentes variantes de l'algorithme PC.
+But : Implémenter différentes variantes de l'algorithme PC, permettant d'obtenir le graphe essentiel d'un BN, en python (avec PyAgrum), les tester sur différentes instances puis comparer les performances des approches.
 Ce projet se décline comme un rapport de recherche sur des algorithmes de l'état de l'art. L'objectif est de se donner les moyens de décider l'algorithme efficace à utiliser. 
 
 Ce repository est constitué de plusieurs fichiers : Le dossier res recense les résultats obtenus, MADI_AideProjet.pdf est un document d'aide pour ce projet (notamment concernant la syntaxe), PC.py et presentation_resultats_et_demonstrations.ipynb sont les codes sources et presentation_resultats_et_demonstrations.ipynb fait également office de rapport, test.csv est une instance de test.
